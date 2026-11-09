@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care2U Connect</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%230E6B63'/%3E%3Cpath d='M7 24 24 8l17 16v16H7z' fill='none' stroke='%23fff' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M21.5 22h5v4.5H31v5h-4.5V36h-5v-4.5H17v-5h4.5z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+:root{--paper:#F5F8F7;--ink:#14231F;--teal:#0E6B63;--teal-d:#0A524C;--amber:#B7791F;--red:#A83232;--line:#D3DDD9;--mute:#5B6E69;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:76px}
+header{background:var(--teal);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px}
+header p{margin:2px 0 0;font-size:13px;opacity:.85}
+main{max-width:640px;margin:0 auto;padding:14px 14px 24px}
+h2{font-size:18px;margin:6px 0 10px}
+h3{font-size:15px;margin:18px 0 8px;color:var(--teal-d)}
+.item{background:var(--white);border:1px solid var(--line);border-left:5px solid var(--teal);border-radius:6px;padding:10px 12px;margin-bottom:10px}
+.item.missed{border-left-color:var(--red)}.item.done{border-left-color:var(--mute);opacity:.8}.item.soon{border-left-color:var(--amber)}
+.item b{display:block}
+.meta{font-size:13px;color:var(--mute)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+button,.btn{font:inherit;font-weight:600;border:0;border-radius:6px;padding:9px 12px;background:var(--teal);color:#fff;cursor:pointer;text-decoration:none;display:inline-block;min-height:40px}
+button.alt,.btn.alt{background:var(--white);color:var(--teal-d);border:1px solid var(--teal)}
+button.warn{background:var(--red)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 4px}
+input,select,textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--ink)}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:14px}.check input{width:auto;margin-top:4px}.check label{margin:0;font-weight:400}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--line);display:flex}
+nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:14px 4px;font-size:14px}
+nav button[aria-current="true"]{color:var(--teal-d);box-shadow:inset 0 3px 0 var(--teal)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:12px}
+.stat span{font-size:28px;font-weight:700;color:var(--teal-d);display:block}
+.empty{padding:16px;border:1px dashed var(--line);border-radius:6px;color:var(--mute);text-align:center}
+.note{font-size:13px;color:var(--mute);margin-top:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:var(--ink);color:#fff;padding:10px 14px;border-radius:6px;font-size:14px;max-width:90%}
+@media (prefers-reduced-motion:no-preference){.toast{animation:in .2s ease-out}@keyframes in{from{opacity:0}to{opacity:1}}}
+</style>
+</head>
+<body>
+<header style="display:flex;gap:12px;align-items:center"><svg width="40" height="40" viewBox="0 0 48 48" role="img" aria-label="Care2U logo" style="flex:none"><path d="M7 24 24 8l17 16v16H7z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M21.5 22h5v4.5H31v5h-4.5V36h-5v-4.5H17v-5h4.5z" fill="#fff"/></svg><div><h1>Care2U Connect</h1><p>Bookings, reminders and follow-up. Data stays on this phone.</p></div></header>
+<main id="app" aria-live="polite"></main>
+<nav aria-label="Main">
+<button data-tab="today">Today</button><button data-tab="book">Book</button><button data-tab="clients">Clients</button><button data-tab="summary">Summary</button>
+</nav>
+<script>
+const SERVICES=["Antenatal care","Postnatal care","Child health and immunisation","Wound dressing","Drug delivery","Lab investigation","Health education","Care of critically ill patient","Other"];
+const KEY="care2u_connect_v1";
+let db=load(),tab="today",lang="en",q="";
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{clients:[],visits:[]}}catch(e){return{clients:[],visits:[]}}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const addDays=(d,n)=>{const x=new Date(d+"T00:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const client=i=>db.clients.find(c=>c.id===i);
+function wa(phone){let p=String(phone).replace(/\D/g,"");if(p.startsWith("0"))p="234"+p.slice(1);return p}
+function msg(v){const c=client(v.clientId);const n=c?c.name:"";
+ return lang==="ha"
+ ?`Sannu ${n}, wannan tunatarwa ce daga Care2U. Ziyarar ku ta ${v.service} tana ranar ${v.date} da karfe ${v.time}. Na gode.`
+ :`Hello ${n}, this is a reminder from Care2U. Your ${v.service} visit is on ${v.date} at ${v.time}. Thank you.`}
+function toast(t){const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2200)}
+function visitCard(v){
+ const c=client(v.clientId);if(!c)return"";
+ const cls=v.status==="Missed"?"missed":v.status==="Done"?"done":v.date<=addDays(today(),1)?"soon":"";
+ const open=v.status==="Booked";
+ return `<div class="item ${cls}"><b>${esc(c.name)}: ${esc(v.service)}</b>
+ <div class="meta">${esc(v.date)} at ${esc(v.time)} | ${esc(c.area||"No area")} | ${esc(v.status)}${v.reminded?" | Reminder sent":""}</div>
+ ${v.notes?`<div class="meta">${esc(v.notes)}</div>`:""}
+ ${open?`<div class="row">
+ <a class="btn" target="_blank" rel="noopener" href="https://wa.me/${wa(c.phone)}?text=${encodeURIComponent(msg(v))}" data-remind="${v.id}">Send reminder</a>
+ <button class="alt" data-done="${v.id}">Mark done</button>
+ <button class="alt" data-missed="${v.id}">Missed</button></div>`:""}</div>`}
+function viewToday(){
+ const t=today(),n=addDays(t,1);
+ const open=db.visits.filter(v=>v.status==="Booked");
+ const overdue=open.filter(v=>v.date<t),td=open.filter(v=>v.date===t),tm=open.filter(v=>v.date===n);
+ const sec=(h,a)=>a.length?`<h3>${h}</h3>`+a.sort((x,y)=>x.time.localeCompare(y.time)).map(visitCard).join(""):"";
+ return `<h2>Today</h2>
+ <label for="lang">Reminder language</label><select id="lang"><option value="en"${lang==="en"?" selected":""}>English</option><option value="ha"${lang==="ha"?" selected":""}>Hausa</option></select>
+ ${sec("Overdue: update these",overdue)}${sec("Today",td)}${sec("Tomorrow: send reminders now",tm)}
+ ${!overdue.length&&!td.length&&!tm.length?`<div class="empty" style="margin-top:14px">No visits due. Tap Book to add a visit.</div>`:""}`}
+function viewBook(){
+ if(!db.clients.length)return `<h2>Book a visit</h2><div class="empty">Add a client first. Tap Clients.</div>`;
+ return `<h2>Book a visit</h2><form id="fBook">
+ <label for="bc">Client</label><select id="bc" required>${db.clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+ <label for="bs">Service</label><select id="bs">${SERVICES.map(s=>`<option>${s}</option>`).join("")}</select>
+ <label for="bd">Date</label><input id="bd" type="date" required value="${addDays(today(),1)}" min="${today()}">
+ <label for="bt">Time</label><input id="bt" type="time" required value="10:00">
+ <label for="bn">Notes (optional)</label><textarea id="bn" rows="2"></textarea>
+ <div class="row"><button type="submit">Save booking</button></div></form>`}
+function viewClients(){
+ const list=db.clients.filter(c=>(c.name+c.phone+(c.area||"")).toLowerCase().includes(q.toLowerCase()));
+ return `<h2>Clients</h2>
+ <details ${db.clients.length?"":"open"}><summary class="btn">Add a client</summary>
+ <form id="fClient"><label for="cn">Full name</label><input id="cn" required autocomplete="off">
+ <label for="cp">Phone (WhatsApp)</label><input id="cp" type="tel" required placeholder="0803 000 0000">
+ <label for="ca">Area or ward</label><input id="ca">
+ <label for="cg">Client type</label><select id="cg"><option>Pregnant woman</option><option>Mother and baby</option><option>Child</option><option>Adult</option></select>
+ <div class="check"><input id="cc" type="checkbox" required><label for="cc">The client agreed to have their information saved and to receive reminders.</label></div>
+ <div class="row"><button type="submit">Save client</button></div></form></details>
+ <label for="sq">Search</label><input id="sq" value="${esc(q)}" placeholder="Name, phone or area">
+ <h3>${list.length} client${list.length===1?"":"s"}</h3>
+ ${list.length?list.map(c=>`<div class="item"><b>${esc(c.name)}</b><div class="meta">${esc(c.type)} | ${esc(c.phone)} | ${esc(c.area||"No area")}</div>
+ <div class="row"><a class="btn alt" target="_blank" rel="noopener" href="https://wa.me/${wa(c.phone)}">Open WhatsApp</a><button class="alt warn" style="color:#fff" data-del="${c.id}">Delete client</button></div></div>`).join(""):`<div class="empty">No clients yet.</div>`}`}
+function viewSummary(){
+ const m=today().slice(0,7),vs=db.visits.filter(v=>v.date.startsWith(m));
+ const done=vs.filter(v=>v.status==="Done").length,missed=vs.filter(v=>v.status==="Missed").length;
+ const sched=vs.filter(v=>v.status!=="Cancelled").length,rem=vs.filter(v=>v.reminded).length;
+ const rate=sched?Math.round(rem/sched*100):0,mr=(done+missed)?Math.round(missed/(done+missed)*100):0;
+ return `<h2>Summary for ${m}</h2><div class="stats">
+ <div class="stat"><span>${db.clients.length}</span>Clients registered</div>
+ <div class="stat"><span>${sched}</span>Visits booked this month</div>
+ <div class="stat"><span>${done}</span>Visits done</div>
+ <div class="stat"><span>${missed}</span>Visits missed${(done+missed)?` (${mr}%)`:""}</div>
+ <div class="stat"><span>${rem}</span>Reminders sent</div>
+ <div class="stat"><span>${rate}%</span>Booked visits with a reminder</div></div>
+ <h3>Save your data</h3><div class="row"><button data-export="csv">Download visits (CSV)</button><button class="alt" data-export="json">Backup (JSON)</button>
+ <button class="alt" data-import>Restore backup</button></div><input id="imp" type="file" accept=".json" hidden>
+ <p class="note">All records are stored only in this browser on this phone. Download a backup often. Do not share the files publicly, because they contain client information.</p>`}
+function render(){
+ const v={today:viewToday,book:viewBook,clients:viewClients,summary:viewSummary}[tab]();
+ document.getElementById("app").innerHTML=v;
+ document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===tab));
+ const sq=document.getElementById("sq");if(sq)sq.addEventListener("input",e=>{q=e.target.value;const p=e.target.selectionStart;render();const n=document.getElementById("sq");n.focus();n.setSelectionRange(p,p)});
+ const l=document.getElementById("lang");if(l)l.addEventListener("change",e=>{lang=e.target.value;render()});
+ const fc=document.getElementById("fClient");if(fc)fc.addEventListener("submit",e=>{e.preventDefault();
+  db.clients.push({id:id(),name:cn.value.trim(),phone:cp.value.trim(),area:ca.value.trim(),type:cg.value,consent:true,created:today()});save();toast("Client saved");render()});
+ const fb=document.getElementById("fBook");if(fb)fb.addEventListener("submit",e=>{e.preventDefault();
+  db.visits.push({id:id(),clientId:bc.value,service:bs.value,date:bd.value,time:bt.value,notes:bn.value.trim(),status:"Booked",reminded:false});save();toast("Booking saved");tab="today";render()});
+ const imp=document.getElementById("imp");if(imp)imp.addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.clients)||!Array.isArray(d.visits))throw 0;db=d;save();toast("Backup restored");render()}catch(x){toast("That file is not a Care2U backup")}};r.readAsText(f)});
+}
+document.addEventListener("click",e=>{
+ const t=e.target.closest("[data-tab],[data-done],[data-missed],[data-remind],[data-del],[data-export],[data-import]");if(!t)return;
+ const d=t.dataset;
+ if(d.tab){tab=d.tab;render();return}
+ if(d.remind){const v=db.visits.find(x=>x.id===d.remind);if(v){v.reminded=true;save();setTimeout(render,300)}return}
+ if(d.done||d.missed){const v=db.visits.find(x=>x.id===(d.done||d.missed));v.status=d.done?"Done":"Missed";save();render();
+  if(d.done&&confirm("Visit marked done. Book a follow-up visit?")){tab="book";render();setTimeout(()=>{const s=document.getElementById("bc");if(s)s.value=v.clientId},0)}return}
+ if(d.del){if(confirm("Delete this client and all their visits? This cannot be undone.")){db.clients=db.clients.filter(c=>c.id!==d.del);db.visits=db.visits.filter(v=>v.clientId!==d.del);save();render()}return}
+ if("import" in d){document.getElementById("imp").click();return}
+ if(d.export){
+  let blob,name;
+  if(d.export==="json"){blob=new Blob([JSON.stringify(db)],{type:"application/json"});name="care2u-backup-"+today()+".json"}
+  else{const rows=[["Client","Phone","Area","Service","Date","Time","Status","Reminder sent","Notes"]].concat(db.visits.map(v=>{const c=client(v.clientId)||{};return[c.name,c.phone,c.area,v.service,v.date,v.time,v.status,v.reminded?"Yes":"No",v.notes]}));
+   blob=new Blob([rows.map(r=>r.map(x=>'"'+String(x??"").replace(/"/g,'""')+'"').join(",")).join("\n")],{type:"text/csv"});name="care2u-visits-"+today()+".csv"}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();return}
+});
+render();
+</script>
+</body>
+</html>
