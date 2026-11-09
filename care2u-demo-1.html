@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care2U Connect</title>
+<style>
+:root{
+  --teal:#0f6b5f; --teal-d:#0a4f46; --bg:#f4f6f5; --card:#ffffff; --ink:#16211f; --mute:#5b6b67;
+  --line:#d5dedb; --warn:#a63d1f; --ok:#0f6b5f; --field:#ffffff;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#151a19; --card:#202625; --ink:#e8efed; --mute:#9db0ab; --line:#33403d; --field:#111514; --warn:#ff9a7a; --ok:#7fd1c3;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:84px}
+header{background:var(--teal);color:#fff;padding:18px 16px;display:flex;gap:14px;align-items:center}
+header svg{flex:none}
+header h1{margin:0;font-size:22px}
+header p{margin:2px 0 0;font-size:14px;opacity:.92}
+main{max-width:560px;margin:0 auto;padding:16px}
+h2{font-size:20px;margin:6px 0 12px}
+label{display:block;font-weight:600;margin:14px 0 6px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:12px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid #5bbfae;outline-offset:1px}
+.check{display:flex;gap:12px;align-items:flex-start;font-weight:400;margin:16px 0}
+.check input{width:24px;height:24px;margin-top:2px;flex:none}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 18px;background:var(--teal);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--teal);border:1.5px solid var(--teal)}
+@media (prefers-color-scheme:dark){button.alt{color:var(--ok);border-color:var(--ok)}}
+.msg{min-height:24px;margin:10px 0 0;font-weight:600}
+.msg.err{color:var(--warn)} .msg.ok{color:var(--ok)}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.item b{display:block;font-size:17px}
+.item small{color:var(--mute)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.row a,.row button{flex:none;padding:9px 14px;font-size:15px;text-decoration:none;border-radius:10px}
+.row a{background:#1f9d55;color:#fff;font-weight:600}
+.empty{border:1.5px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--mute);margin:12px 0}
+.count{color:var(--ok);font-weight:700;margin:16px 0 4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat strong{display:block;font-size:30px;line-height:1.1}
+.stat span{color:var(--mute);font-size:14px}
+.done{opacity:.6}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex}
+nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:16px 4px;border-top:4px solid transparent}
+nav button[aria-selected="true"]{color:var(--teal);border-top-color:var(--teal)}
+@media (prefers-color-scheme:dark){nav button[aria-selected="true"]{color:var(--ok);border-top-color:var(--ok)}}
+.hidden{display:none}
+.note{color:var(--mute);font-size:14px;margin-top:20px}
+</style>
+</head>
+<body>
+<header>
+  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M12 9v7M8.5 12.5h7"/></svg>
+  <div><h1>Care2U Connect</h1><p>Bookings, reminders and follow-up. Data stays on this phone.</p></div>
+</header>
+
+<main>
+  <!-- TODAY -->
+  <section id="tab-today">
+    <h2>Today</h2>
+    <div id="todayList"></div>
+    <h2 style="margin-top:24px">Coming up</h2>
+    <div id="upcomingList"></div>
+  </section>
+
+  <!-- BOOK -->
+  <section id="tab-book" class="hidden">
+    <h2>Book a visit</h2>
+    <label for="bClient">Client</label>
+    <select id="bClient"></select>
+    <label for="bService">Service</label>
+    <select id="bService">
+      <option>Wound dressing</option>
+      <option>Antenatal care</option>
+      <option>Drug delivery</option>
+      <option>Lab investigation</option>
+      <option>Health education</option>
+      <option>Maternal and child health</option>
+      <option>Care of the critically ill</option>
+    </select>
+    <label for="bDate">Date</label>
+    <input id="bDate" type="date">
+    <label for="bTime">Time</label>
+    <input id="bTime" type="time" value="10:00">
+    <label for="bNote">Note (optional)</label>
+    <textarea id="bNote" rows="2"></textarea>
+    <p id="bMsg" class="msg" role="status"></p>
+    <button id="bSave" type="button">Book visit</button>
+  </section>
+
+  <!-- CLIENTS -->
+  <section id="tab-clients" class="hidden">
+    <h2>Clients</h2>
+    <label for="cName">Full name</label>
+    <input id="cName" autocomplete="off">
+    <label for="cPhone">Phone (WhatsApp)</label>
+    <input id="cPhone" inputmode="tel" placeholder="0803 000 0000" autocomplete="off">
+    <label for="cArea">Area or ward</label>
+    <input id="cArea" autocomplete="off">
+    <label for="cType">Client type</label>
+    <select id="cType">
+      <option>Pregnant woman</option>
+      <option>Child</option>
+      <option>Adult</option>
+      <option>Older adult</option>
+    </select>
+    <label class="check"><input id="cConsent" type="checkbox"><span>The client agreed to have their information saved and to receive reminders.</span></label>
+    <button id="cSave" type="button">Save client</button>
+    <p id="cMsg" class="msg" role="status"></p>
+
+    <label for="cSearch">Search clients</label>
+    <input id="cSearch" type="search" autocomplete="off" name="client-search-box">
+    <p class="count" id="cCount">0 clients</p>
+    <div id="clientList"></div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section id="tab-summary" class="hidden">
+    <h2>Summary</h2>
+    <div class="grid" id="stats"></div>
+    <h2 style="margin-top:24px">Visits by service</h2>
+    <div id="byService"></div>
+    <div class="row" style="margin-top:24px">
+      <button id="demo" type="button" class="alt">Load sample data</button>
+      <button id="wipe" type="button" class="alt">Clear all data</button>
+    </div>
+    <p class="note" id="storeNote"></p>
+  </section>
+</main>
+
+<nav role="tablist" aria-label="Sections">
+  <button role="tab" data-tab="today" aria-selected="true">Today</button>
+  <button role="tab" data-tab="book" aria-selected="false">Book</button>
+  <button role="tab" data-tab="clients" aria-selected="false">Clients</button>
+  <button role="tab" data-tab="summary" aria-selected="false">Summary</button>
+</nav>
+
+<script>
+(function(){
+  var KEY='care2u-connect-v1';
+  var state={clients:[],visits:[]};
+  var persisted=false;
+
+  // Load: use browser storage when allowed, otherwise keep everything in memory so saving always works.
+  try{
+    var raw=window.localStorage.getItem(KEY);
+    if(raw){var p=JSON.parse(raw); if(p&&p.clients&&p.visits) state=p;}
+    window.localStorage.setItem(KEY+'-t','1'); window.localStorage.removeItem(KEY+'-t');
+    persisted=true;
+  }catch(e){persisted=false;}
+
+  function persist(){ if(!persisted) return; try{window.localStorage.setItem(KEY,JSON.stringify(state));}catch(e){persisted=false;} }
+  function $(id){return document.getElementById(id);}
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function todayStr(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  function waNumber(p){var d=String(p).replace(/\D/g,''); if(d.indexOf('234')===0) return d; if(d.charAt(0)==='0') d=d.slice(1); return '234'+d;}
+  function prettyDate(s){var p=s.split('-'); var d=new Date(+p[0],+p[1]-1,+p[2]); return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});}
+  function client(id){return state.clients.filter(function(c){return c.id===id;})[0];}
+  function say(el,text,kind){el.textContent=text;el.className='msg '+(kind||'');}
+
+  // Tabs
+  function show(tab){
+    ['today','book','clients','summary'].forEach(function(t){
+      $('tab-'+t).classList.toggle('hidden',t!==tab);
+    });
+    document.querySelectorAll('nav button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===tab?'true':'false');});
+    render(); window.scrollTo(0,0);
+  }
+  document.querySelectorAll('nav button').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.tab);});});
+
+  // Save client
+  $('cSave').addEventListener('click',function(){
+    var name=$('cName').value.trim(), phone=$('cPhone').value.trim(), area=$('cArea').value.trim();
+    var msg=$('cMsg');
+    if(!name){say(msg,'Enter the client\u2019s full name.','err');$('cName').focus();return;}
+    if(phone.replace(/\D/g,'').length<10){say(msg,'Enter a phone number with at least 10 digits.','err');$('cPhone').focus();return;}
+    if(!$('cConsent').checked){say(msg,'Tick the consent box to save this client.','err');return;}
+    state.clients.push({id:uid(),name:name,phone:phone,area:area,type:$('cType').value,created:todayStr()});
+    persist();
+    $('cName').value='';$('cPhone').value='';$('cArea').value='';$('cConsent').checked=false;$('cSearch').value='';
+    say(msg,'Client saved: '+name+'.','ok');
+    render();
+  });
+
+  // Book visit
+  $('bSave').addEventListener('click',function(){
+    var msg=$('bMsg'), cid=$('bClient').value;
+    if(!cid){say(msg,'Add a client first, then book a visit.','err');return;}
+    if(!$('bDate').value){say(msg,'Choose a date for the visit.','err');return;}
+    state.visits.push({id:uid(),clientId:cid,service:$('bService').value,date:$('bDate').value,time:$('bTime').value||'09:00',note:$('bNote').value.trim(),done:false});
+    persist();
+    $('bNote').value='';
+    say(msg,'Visit booked for '+client(cid).name+' on '+prettyDate($('bDate').value)+'.','ok');
+    render();
+  });
+
+  function reminderLink(v){
+    var c=client(v.clientId); if(!c) return '#';
+    var text='Hello '+c.name+', this is a reminder from Care2U Patient Support Service. Your '+v.service+' visit is on '+prettyDate(v.date)+' at '+v.time+'. Please reply to confirm.';
+    return 'https://wa.me/'+waNumber(c.phone)+'?text='+encodeURIComponent(text);
+  }
+
+  function visitCard(v){
+    var c=client(v.clientId); if(!c) return '';
+    return '<div class="item '+(v.done?'done':'')+'"><b>'+esc(c.name)+'</b>'+
+      '<small>'+esc(v.service)+' \u2022 '+esc(prettyDate(v.date))+' at '+esc(v.time)+' \u2022 '+esc(c.area||'No area')+'</small>'+
+      (v.note?'<div><small>'+esc(v.note)+'</small></div>':'')+
+      '<div class="row">'+
+        (v.done?'<span><small>Visit completed</small></span>':
+          '<a href="'+reminderLink(v)+'" target="_blank" rel="noopener">Send WhatsApp reminder</a>'+
+          '<button type="button" class="alt" data-done="'+v.id+'">Mark done</button>')+
+      '</div></div>';
+  }
+
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.dataset&&t.dataset.done){state.visits.forEach(function(v){if(v.id===t.dataset.done)v.done=true;});persist();render();}
+    if(t.dataset&&t.dataset.del){
+      state.clients=state.clients.filter(function(c){return c.id!==t.dataset.del;});
+      state.visits=state.visits.filter(function(v){return v.clientId!==t.dataset.del;});
+      persist();render();
+    }
+  });
+
+  $('cSearch').addEventListener('input',render);
+
+  $('demo').addEventListener('click',function(){
+    var a=uid(),b=uid(),c=uid(),t=todayStr();
+    state.clients.push(
+      {id:a,name:'Amina Yusuf',phone:'08030000001',area:'Tunfure',type:'Pregnant woman',created:t},
+      {id:b,name:'Musa Danjuma',phone:'08030000002',area:'Bolari',type:'Adult',created:t},
+      {id:c,name:'Baby Hauwa',phone:'08030000003',area:'Pantami',type:'Child',created:t});
+    state.visits.push(
+      {id:uid(),clientId:a,service:'Antenatal care',date:t,time:'10:00',note:'',done:false},
+      {id:uid(),clientId:b,service:'Wound dressing',date:t,time:'12:30',note:'Dressing change',done:false},
+      {id:uid(),clientId:c,service:'Maternal and child health',date:t,time:'15:00',note:'',done:true});
+    persist();render();
+  });
+  $('wipe').addEventListener('click',function(){
+    if(window.confirm('Clear all clients and visits on this phone?')){state={clients:[],visits:[]};persist();render();}
+  });
+
+  function render(){
+    var t=todayStr();
+    // Clients list
+    var q=$('cSearch').value.trim().toLowerCase();
+    var list=state.clients.filter(function(c){return !q||(c.name+' '+c.area+' '+c.phone).toLowerCase().indexOf(q)>-1;});
+    $('cCount').textContent=list.length+(list.length===1?' client':' clients');
+    $('clientList').innerHTML=list.length?list.map(function(c){
+      return '<div class="item"><b>'+esc(c.name)+'</b><small>'+esc(c.type)+' \u2022 '+esc(c.area||'No area')+' \u2022 '+esc(c.phone)+'</small>'+
+        '<div class="row"><button type="button" class="alt" data-del="'+c.id+'">Remove</button></div></div>';
+    }).join(''):'<div class="empty">No clients yet. Fill in the form above and tap Save client.</div>';
+
+    // Book dropdown
+    var sel=$('bClient'), keep=sel.value;
+    sel.innerHTML=state.clients.length?state.clients.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join(''):'<option value="">No clients yet</option>';
+    if(keep) sel.value=keep;
+    if(!$('bDate').value) $('bDate').value=t;
+
+    // Today and upcoming
+    var sorted=state.visits.slice().sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time);});
+    var td=sorted.filter(function(v){return v.date===t;}), up=sorted.filter(function(v){return v.date>t;});
+    $('todayList').innerHTML=td.length?td.map(visitCard).join(''):'<div class="empty">No visits today. Open Book to schedule one.</div>';
+    $('upcomingList').innerHTML=up.length?up.map(visitCard).join(''):'<div class="empty">Nothing booked for later dates.</div>';
+
+    // Summary
+    var done=state.visits.filter(function(v){return v.done;}).length;
+    $('stats').innerHTML=[
+      [state.clients.length,'Clients'],[state.visits.length,'Visits booked'],
+      [done,'Visits completed'],[state.visits.length-done,'Visits still to do']
+    ].map(function(s){return '<div class="stat"><strong>'+s[0]+'</strong><span>'+s[1]+'</span></div>';}).join('');
+    var counts={}; state.visits.forEach(function(v){counts[v.service]=(counts[v.service]||0)+1;});
+    var keys=Object.keys(counts);
+    $('byService').innerHTML=keys.length?keys.map(function(k){return '<div class="item"><b>'+esc(k)+'</b><small>'+counts[k]+(counts[k]===1?' visit':' visits')+'</small></div>';}).join(''):'<div class="empty">Visits will be counted here by service.</div>';
+    $('storeNote').textContent=persisted?'Saved on this phone. Nothing is sent anywhere unless you tap a WhatsApp button.':'This page cannot keep data after you close it. Everything you add still works until then.';
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
